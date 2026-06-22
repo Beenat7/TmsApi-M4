@@ -26,3 +26,4 @@ C:\Users\mmmm\TmsApi-M4\TmsApi\obj\Debug\net10.0\refint\TmsApi.dll
 C:\Users\mmmm\TmsApi-M4\TmsApi\obj\Debug\net10.0\TmsApi.pdb
 C:\Users\mmmm\TmsApi-M4\TmsApi\obj\Debug\net10.0\TmsApi.genruntimeconfig.cache
 C:\Users\mmmm\TmsApi-M4\TmsApi\obj\Debug\net10.0\ref\TmsApi.dll
+C:\Users\mmmm\TmsApi-M4\TmsApi\obj\Debug\net10.0\TmsApi.sourcelink.json
