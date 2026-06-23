@@ -10,7 +10,7 @@ builder.Host.UseDefaultServiceProvider(options =>
 });
 
 builder.Services.AddControllers();
-
+builder.Services.AddProblemDetails();
 builder.Services.AddAuthentication("DemoScheme")
     .AddScheme<AuthenticationSchemeOptions, DemoAuthenticationHandler>(
         "DemoScheme",
@@ -27,9 +27,9 @@ builder.Services.AddOptions<PaymentOptions>()
     .ValidateOnStart();
 
 var app = builder.Build();
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 app.UseMiddleware<RequestLoggingMiddleware>();
-
-app.UseExceptionHandler("/error");
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
@@ -41,6 +41,11 @@ app.MapGet("/api/enrollments/worker-smoke",
 {
     worker.ProcessBatch();
     return Results.Ok("processed");
+});
+app.MapGet("/api/error", () =>
+{
+    throw new TmsDatabaseException(
+        "Simulated database failure for ProblemDetails testing");
 });
 
 app.Run();
