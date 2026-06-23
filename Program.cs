@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using TmsApi.Authentication;
 using TmsApi.Middleware;
+using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseDefaultServiceProvider(options =>
@@ -10,6 +11,7 @@ builder.Host.UseDefaultServiceProvider(options =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddAuthentication("DemoScheme")
     .AddScheme<AuthenticationSchemeOptions, DemoAuthenticationHandler>(
@@ -27,6 +29,7 @@ builder.Services.AddOptions<PaymentOptions>()
     .ValidateOnStart();
 
 var app = builder.Build();
+
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseMiddleware<RequestLoggingMiddleware>();
@@ -35,6 +38,12 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
 
 app.MapGet("/api/enrollments/worker-smoke",
     (EnrollmentWorker worker) =>
