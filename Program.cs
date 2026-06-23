@@ -3,6 +3,12 @@ using TmsApi.Authentication;
 using TmsApi.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateScopes = true;
+    options.ValidateOnBuild = true;
+});
+
 builder.Services.AddControllers();
 
 builder.Services.AddAuthentication("DemoScheme")
@@ -11,6 +17,9 @@ builder.Services.AddAuthentication("DemoScheme")
         options => { });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddSingleton<EnrollmentWorker>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 var app = builder.Build();
 app.UseMiddleware<RequestLoggingMiddleware>();
@@ -21,6 +30,13 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapGet("/api/enrollments/worker-smoke",
+    (EnrollmentWorker worker) =>
+{
+    worker.ProcessBatch();
+    return Results.Ok("processed");
+});
 
 app.Run();
 
