@@ -3,6 +3,8 @@ using System;
 using System.Linq;
 using TmsApi.Data;
 namespace TmsApi.Controllers;
+using Microsoft.EntityFrameworkCore;
+using TmsApi.Entities;
 [ApiController]
 [Route("api/test")]
 public class TestController(TmsDbContext context) : ControllerBase
@@ -43,6 +45,48 @@ Console.WriteLine($">>> EXCEPTION CAUGHT: {ex.Message}\n");return BadRequest(new
 }
 }
 
+
+
+[HttpGet("nplusone")]
+public async Task<IActionResult> NPlusOne()
+{
+    var students = await context.Students
+        .AsNoTracking()
+        .ToListAsync();
+
+    foreach (var s in students)
+    {
+        var count = await context.Enrollments
+            .AsNoTracking()
+            .CountAsync(e => e.StudentId == s.Id);
+
+        Console.WriteLine($"{s.Name}: {count} enrollments");
+    }
+
+    return Ok("Finished");
+}
+
+
+
+[HttpGet("nplusone-fixed")]
+public async Task<IActionResult> NPlusOneFixed()
+{
+    var report = await context.Students
+        .AsNoTracking()
+        .Select(s => new
+        {
+            s.Name,
+            EnrollmentCount = s.Enrollments.Count
+        })
+        .ToListAsync();
+
+    foreach (var r in report)
+    {
+        Console.WriteLine($"{r.Name}: {r.EnrollmentCount} enrollments");
+    }
+
+    return Ok(report);
+}
 
 
 }
