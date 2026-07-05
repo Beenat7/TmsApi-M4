@@ -15,5 +15,10 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
         builder.Property(s => s.RegistrationNumber)
             .IsRequired()
             .HasMaxLength(50);
+
+        builder.Property<DateTime>("LastUpdated");    
+
+        builder.Property(s => s.Version)
+       .IsRowVersion();
     }
 }
