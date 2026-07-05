@@ -20,5 +20,7 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
 
         builder.Property(s => s.Version)
        .IsRowVersion();
+       
+       builder.HasQueryFilter(s => !s.IsDeleted);
     }
 }
