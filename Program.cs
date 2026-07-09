@@ -5,6 +5,7 @@ using Scalar.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Data;
 using TmsApi.Entities;
+using TmsApi.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseDefaultServiceProvider(options =>
@@ -23,7 +24,7 @@ builder.Services.AddAuthentication("DemoScheme")
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddSingleton<EnrollmentWorker>();
+
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 // Register TmsDbContext scoped for incoming HTTP requests
@@ -37,6 +38,7 @@ builder.Services.AddOptions<PaymentOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddScoped<ICourseService, CourseService>();
 var app = builder.Build();
 
 app.UseExceptionHandler();
@@ -54,12 +56,6 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.MapGet("/api/enrollments/worker-smoke",
-    (EnrollmentWorker worker) =>
-{
-    worker.ProcessBatch();
-    return Results.Ok("processed");
-});
 app.MapGet("/api/error", () =>
 {
     throw new TmsDatabaseException(
@@ -84,9 +80,9 @@ new() { RegistrationNumber = "TMS-2026-0005", Name = "EvanWright", GPA = 2.5m, I
 context.Students.AddRange(students);
 var courses = new List<Course>
 {
-new() { Code = "CS-101", Title = "Introduction to ComputerScience", Capacity = 30 },
-new() { Code = "CS-201", Title = "Data Structures and Algorithms", Capacity = 25 },
-new() { Code = "MAT-101", Title = "Calculus I", Capacity=40 }
+new() { Code = "CS-101", Title = "Introduction to ComputerScience", MaxCapacity = 30 },
+new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
+new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity=40 }
 };
 context.Courses.AddRange(courses);
 context.SaveChanges();
@@ -102,15 +98,5 @@ context.SaveChanges();
 }
 }
 
-
-
-
 app.Run();
-
-
-
-
-
-
-
 
