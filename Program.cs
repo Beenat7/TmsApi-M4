@@ -24,7 +24,7 @@ builder.Services.AddAuthentication("DemoScheme")
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddSingleton<EnrollmentWorker>();
+
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 // Register TmsDbContext scoped for incoming HTTP requests
@@ -56,12 +56,6 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.MapGet("/api/enrollments/worker-smoke",
-    (EnrollmentWorker worker) =>
-{
-    worker.ProcessBatch();
-    return Results.Ok("processed");
-});
 app.MapGet("/api/error", () =>
 {
     throw new TmsDatabaseException(
@@ -104,15 +98,5 @@ context.SaveChanges();
 }
 }
 
-
-
-
 app.Run();
-
-
-
-
-
-
-
 

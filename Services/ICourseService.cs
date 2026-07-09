@@ -7,4 +7,7 @@ public interface ICourseService
     Task<CourseResponseDto> CreateAsync(
         CreateCourseRequest request,
         CancellationToken ct);
+        Task<bool> CodeExistsAsync(
+            string code,
+            CancellationToken ct);
 }
