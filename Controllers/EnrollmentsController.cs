@@ -11,6 +11,23 @@ public class EnrollmentsController(
     IEnrollmentService enrollmentService)
     : ControllerBase
 {
+   [HttpGet(Name = "ListCourseEnrollments")]
+public async Task<IActionResult> GetEnrollments(
+    int courseId,
+    CancellationToken ct)
+    {
+        var course = await courseService.GetByIdAsync(courseId, ct);
+        if (course is null)
+        {
+            return NotFound();
+        }
+
+        var enrollments = await enrollmentService.GetByCourseAsync(
+            courseId,
+            ct);
+        return Ok(enrollments);
+    } 
+
     [HttpGet("{id:int}", Name = nameof(GetEnrollment))]
     public async Task<IActionResult> GetEnrollment(
         int courseId,
