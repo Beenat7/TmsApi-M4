@@ -60,6 +60,7 @@ builder.Services.AddOptions<PaymentOptions>()
 builder.Services.AddScoped<ICourseService, CourseService>();
 var app = builder.Build();
 
+app.UseMiddleware<V1DeprecationMiddleware>();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseMiddleware<RequestLoggingMiddleware>();
