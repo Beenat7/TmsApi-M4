@@ -33,8 +33,33 @@ public class CoursesController(
     {
         var result = await courseService.GetCoursesAsync(request, ct);
 
-        return Ok(result);
-    }
+        return Ok(new
+        {
+            data = result.Items,
+            meta = new
+            {
+                result.TotalCount,
+                result.Page,
+                result.PageSize,
+                result.TotalPages,
+                result.HasNext,
+                result.HasPrevious
+            },
+
+            links = new
+            {
+                self = $"/api/v2/courses?page={result.Page}&pageSize={result.PageSize}",
+                next = result.HasNext
+                    ? $"/api/v2/courses?page={result.Page + 1}&pageSize={result.PageSize}"
+                    : null,
+
+                prev = result.HasPrevious
+                    ? $"/api/v2/courses?page={result.Page - 1}&pageSize={result.PageSize}"
+                    : null,
+                enroll = "/api/v2/enrollments"
+            }
+        });
+        }
 
     
     [HttpGet("{id:int}", Name = nameof(GetCourseById))]
