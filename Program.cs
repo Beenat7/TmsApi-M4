@@ -8,6 +8,13 @@ using TmsApi.Entities;
 using TmsApi.Services;
 using TmsApi.Filters;
 using Asp.Versioning;
+using TmsApi.Application.Interfaces;
+using TmsApi.Infrastructure.Repositories;
+using FluentValidation;
+using MediatR;
+using TmsApi.Application.Behaviors;
+using TmsApi.Application.Enrollments.Commands;
+using TmsApi.ExceptionHandlers;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseDefaultServiceProvider(options =>
@@ -58,6 +65,25 @@ builder.Services.AddOptions<PaymentOptions>()
     .ValidateOnStart();
 
 builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<ICourseRepository, CourseRepository>();
+builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
+
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(EnrollStudentHandler).Assembly));
+
+builder.Services.AddValidatorsFromAssembly(
+    typeof(EnrollStudentValidator).Assembly);
+
+builder.Services.AddTransient(
+    typeof(IPipelineBehavior<,>),
+    typeof(LoggingBehavior<,>));
+
+builder.Services.AddTransient(
+    typeof(IPipelineBehavior<,>),
+    typeof(ValidationBehavior<,>));
+
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 var app = builder.Build();
 
 app.UseMiddleware<V1DeprecationMiddleware>();
