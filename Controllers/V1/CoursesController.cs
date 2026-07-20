@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.Routing;
 using TmsApi.Dtos;
 using TmsApi.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Asp.Versioning;
 
-namespace TmsApi.Controllers;
+namespace TmsApi.Controllers.V1;
 
 [ApiController]
-[Route("api/courses")]
+[Route("api/v{version:apiVersion}/courses")]
+[ApiVersion("1.0")]
 [Tags("Courses")]
 [Produces("application/json")]
 [ProducesResponseType(
