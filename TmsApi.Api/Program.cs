@@ -13,6 +13,7 @@ using TmsApi.Infrastructure.Persistence;
 using TmsApi.Infrastructure.Services;
 
 using Asp.Versioning;
+using TmsApi.Infrastructure.Persistence.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,6 +65,10 @@ builder.Services.AddOptions<PaymentOptions>()
     .ValidateOnStart();
 
 builder.Services.AddScoped<ICourseService, CourseService>();
+
+builder.Services.AddScoped<ICourseRepository, CourseRepository>();
+builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
