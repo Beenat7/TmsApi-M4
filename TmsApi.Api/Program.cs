@@ -2,17 +2,18 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 
 using Scalar.AspNetCore;
-
 using TmsApi.Api.Authentication;
 using TmsApi.Api.Filters;
 using TmsApi.Api.Middleware;
 
 using TmsApi.Application.Interfaces;
-
 using TmsApi.Domain.Entities;
 
 using TmsApi.Infrastructure.Persistence;
 using TmsApi.Infrastructure.Services;
+
+using Asp.Versioning;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseDefaultServiceProvider(options =>
@@ -25,6 +26,20 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<AuditLogFilter>();
 });
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddAuthentication("DemoScheme")
@@ -58,6 +73,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<V1DeprecationMiddleware>();
 app.MapControllers();
 
 if (app.Environment.IsDevelopment())
