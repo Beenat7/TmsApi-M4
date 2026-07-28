@@ -17,4 +17,14 @@ public class CourseRepository(TmsDbContext context) : ICourseRepository
                 c => c.Code == courseCode,
                 ct);
     }
+
+    public async Task<List<Course>> GetAllAsync(
+    CancellationToken ct = default)
+        {
+            return await context.Courses
+                .Include(c => c.Enrollments)
+                .AsNoTracking()
+                .ToListAsync(ct);
+        }
+
 }

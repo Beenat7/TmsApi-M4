@@ -21,6 +21,8 @@ using TmsApi.Api.ExceptionHandlers;
 using TmsApi.Application.Behaviors;
 using TmsApi.Application.Enrollments.Commands;
 
+using Microsoft.Extensions.Caching.Hybrid;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseDefaultServiceProvider(options =>
@@ -90,6 +92,17 @@ builder.Services.AddTransient(
     typeof(ValidationBehavior<,>));
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+builder.Services.AddHybridCache(options =>
+{
+    options.DefaultEntryOptions = new HybridCacheEntryOptions
+    {
+        Expiration = TimeSpan.FromMinutes(10),
+        LocalCacheExpiration = TimeSpan.FromMinutes(2)
+    };
+});
+
+builder.Services.AddScoped<ICachedCourseService, CachedCourseService>();
 
 var app = builder.Build();
 

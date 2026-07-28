@@ -1,14 +1,16 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TmsApi.Infrastructure.Persistence;
+using TmsApi.Application.Interfaces;
 
 namespace TmsApi.Api.Controllers.V2;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/courses")]
 [ApiVersion("2.0")]
-public class CoursesController(TmsDbContext context) : ControllerBase
+public class CoursesController(
+    ICachedCourseService cachedCourseService)
+    : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetCourses(
@@ -19,23 +21,13 @@ public class CoursesController(TmsDbContext context) : ControllerBase
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 50);
 
-        var baseQuery = context.Courses.AsNoTracking();
-
-        var totalCount = await baseQuery.CountAsync(ct);
-
-        var rows = await baseQuery
+        var courses = await cachedCourseService.GetAllCoursesAsync(ct);
+        var totalCount = courses.Count;
+        var rows = courses
             .OrderBy(c => c.Title)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(c => new
-            {
-                c.Id,
-                c.Title,
-                c.Code,
-                c.MaxCapacity,
-                EnrollmentCount = c.Enrollments.Count
-            })
-            .ToListAsync(ct);
+            .ToList();
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
