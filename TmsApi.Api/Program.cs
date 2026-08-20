@@ -29,6 +29,9 @@ using Microsoft.AspNetCore.Mvc;
 using TmsApi.Api.RateLimiting;
 
 using TmsApi.Infrastructure.Transcripts;
+using System.Threading.Channels;
+using TmsApi.Application.Transcripts;
+using TmsApi.Infrastructure.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -226,13 +229,33 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddSingleton<ITranscriptStatusStore, InMemoryTranscriptStatusStore>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngular", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+builder.Services.AddSingleton(
+    Channel.CreateBounded<TranscriptRequest>(
+        new BoundedChannelOptions(100)
+        {
+            FullMode = BoundedChannelFullMode.Wait
+        }));
+
+builder.Services.AddHostedService<TranscriptWorker>();        
 
 var app = builder.Build();
-
+app.UseCors("AllowAngular");
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseHttpsRedirection();
+
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();
