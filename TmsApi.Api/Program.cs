@@ -31,10 +31,15 @@ using TmsApi.Api.RateLimiting;
 using TmsApi.Infrastructure.Transcripts;
 using System.Threading.Channels;
 using TmsApi.Application.Transcripts;
-using TmsApi.Infrastructure.Workers;
 using TmsApi.Application.Hubs;
 using TmsApi.Api.Hubs;
 
+using Polly;
+using Polly.CircuitBreaker;
+using Polly.Retry;
+using Polly.Timeout;
+
+using TmsApi.Infrastructure.ExternalServices;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -256,7 +261,81 @@ builder.Services.AddSingleton<
     ITranscriptNotificationService,
     TranscriptNotificationService>();
 
+builder.Services.AddResiliencePipeline(
+    "certificate-api",
+    pipeline =>
+    {
+        pipeline
+            // Outer: hard timeout for the entire request
+            .AddTimeout(TimeSpan.FromSeconds(5))
+
+            // Middle: stop calling a failing downstream
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions
+            {
+                FailureRatio = 0.5,
+                MinimumThroughput = 10,
+                SamplingDuration = TimeSpan.FromSeconds(30),
+                BreakDuration = TimeSpan.FromSeconds(15),
+
+                ShouldHandle = new PredicateBuilder()
+                    .Handle<HttpRequestException>()
+                    .Handle<TimeoutRejectedException>(),
+
+                OnOpened = args =>
+                {
+                    Console.WriteLine(
+                        "Circuit OPENED - stopping requests to certificate service");
+
+                    return ValueTask.CompletedTask;
+                },
+
+                OnClosed = args =>
+                {
+                    Console.WriteLine(
+                        "Circuit CLOSED - certificate service recovered");
+
+                    return ValueTask.CompletedTask;
+                }
+            })
+
+            // Inner: retry transient failures with jitter
+            .AddRetry(new RetryStrategyOptions
+            {
+                MaxRetryAttempts = 3,
+                Delay = TimeSpan.FromMilliseconds(500),
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
+
+                ShouldHandle = new PredicateBuilder()
+                    .Handle<HttpRequestException>()
+                    .Handle<TimeoutRejectedException>(),
+
+                OnRetry = args =>
+                {
+                    Console.WriteLine(
+                        $"Retry #{args.AttemptNumber} after " +
+                        $"{args.RetryDelay.TotalMilliseconds:F0}ms " +
+                        $"({args.Outcome.Exception?.GetType().Name})");
+
+                    return ValueTask.CompletedTask;
+                }
+            });
+    });
+
+builder.Services.AddHttpClient<ICertificateService, CertificateService>(
+    (sp, client) =>
+    {
+        var baseUrl =
+            sp.GetRequiredService<IConfiguration>()
+                .GetValue<string>("TmsApi:PublicBaseUrl")
+            ?? "https://localhost:5285";
+
+        client.BaseAddress = new Uri(baseUrl);
+    });
+
+
 var app = builder.Build();
+
 app.UseCors("AllowAngular");
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -326,6 +405,46 @@ var context = scope.ServiceProvider
 .GetRequiredService<TmsDbContext>();
 await DataSeeder.SeedAsync(context);
 }
+
+// --- Lab-only fake certificate service ---
+var attempts = 0;
+app.MapPost("/fake/certificates", async () =>
+{
+    var n = Interlocked.Increment(ref attempts);
+    if (n % 7 == 0)
+    {
+        // Simulate a downstream service that hangs.
+        await Task.Delay(TimeSpan.FromSeconds(20));
+        return Results.Ok(new
+        {
+            Status = "issued",
+            Attempt = n
+        });
+    }
+
+    if (n % 3 != 0)
+    {
+        // Transient failure: Polly should retry this.
+        return Results.StatusCode(
+            StatusCodes.Status503ServiceUnavailable);
+    }
+
+    if (n % 11 == 0)
+    {
+        // Non-transient failure: Polly must NOT retry this.
+        return Results.BadRequest(new
+        {
+            error = "validation_failed"
+        });
+    }
+
+    return Results.Ok(new
+    {
+        Status = "issued",
+        Attempt = n
+    });
+})
+.WithTags("lab-fixtures");
 
 app.Run();
 
