@@ -41,8 +41,17 @@ using Polly.Timeout;
 
 using TmsApi.Infrastructure.ExternalServices;
 
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 builder.Host.UseDefaultServiceProvider(options =>
 {
@@ -333,6 +342,46 @@ builder.Services.AddHttpClient<ICertificateService, CertificateService>(
         client.BaseAddress = new Uri(baseUrl);
     });
 
+builder.Services
+    .AddHealthChecks()
+    .AddCheck(
+        "self",
+        () => HealthCheckResult.Healthy("alive"),
+        tags: ["live"])
+    .AddNpgSql(
+        connectionString: builder.Configuration.GetConnectionString("TmsDatabase")!,
+        name: "postgres",
+        tags: ["ready"]);
+
+builder.Logging.AddJsonConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.JsonWriterOptions = new()
+    {
+        Indented = false
+    };
+});
+
+const string ServiceName = "tms-api";
+
+builder.Services
+    .AddOpenTelemetry()
+    .ConfigureResource(resource =>
+        resource.AddService(
+            serviceName: ServiceName,
+            serviceVersion: "1.0.0"))
+    .WithTracing(tracing => tracing
+        .AddSource(ServiceName)
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter())
+    .WithMetrics(metrics => metrics
+        .AddMeter(ServiceName)
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddOtlpExporter());
+
 
 var app = builder.Build();
 
@@ -445,6 +494,25 @@ app.MapPost("/fake/certificates", async () =>
     });
 })
 .WithTags("lab-fixtures");
+
+
+app.MapHealthChecks(
+    "/health/live",
+    new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("live")
+    })
+    .DisableRateLimiting();
+
+app.MapHealthChecks(
+    "/health/ready",
+    new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready")
+    })
+    .DisableRateLimiting();
+
+
 
 app.Run();
 

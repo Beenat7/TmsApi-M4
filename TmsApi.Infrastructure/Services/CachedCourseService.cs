@@ -33,8 +33,21 @@ return new CourseResponseDto(
 },
 tags: [CacheKeys.CoursesTag],
 cancellationToken: ct);
-if (!dbHit)
-logger.LogInformation("Cache HIT for {Key}", key);
+if (dbHit)
+{
+    TmsMeters.CacheMisses.Add(
+        1,
+        new KeyValuePair<string, object?>("key.kind", "course"));
+}
+else
+{
+    TmsMeters.CacheHits.Add(
+        1,
+        new KeyValuePair<string, object?>("key.kind", "course"));
+
+    logger.LogInformation("Cache HIT for {Key}", key);
+}
+
 return dto;
 }
 public async Task<List<CourseResponseDto>> GetAllCoursesAsync(CancellationToken
@@ -56,8 +69,22 @@ c.MaxCapacity, c.Enrollments.Count)).ToList();
 },
 tags: [CacheKeys.CoursesTag],
 cancellationToken: ct);
-if (!dbHit)
-logger.LogInformation("Cache HIT for {Key}", key);
+
+if (dbHit)
+{
+    TmsMeters.CacheMisses.Add(
+        1,
+        new KeyValuePair<string, object?>("key.kind", "course"));
+}
+else
+{
+    TmsMeters.CacheHits.Add(
+        1,
+        new KeyValuePair<string, object?>("key.kind", "course"));
+
+    logger.LogInformation("Cache HIT for {Key}", key);
+}
+
 return list;
 }
 public async Task InvalidateCourseCacheAsync(CancellationToken ct)
