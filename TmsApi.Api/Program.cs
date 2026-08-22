@@ -32,6 +32,10 @@ using TmsApi.Infrastructure.Transcripts;
 using System.Threading.Channels;
 using TmsApi.Application.Transcripts;
 using TmsApi.Infrastructure.Workers;
+using TmsApi.Application.Hubs;
+using TmsApi.Api.Hubs;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -247,7 +251,10 @@ builder.Services.AddSingleton(
             FullMode = BoundedChannelFullMode.Wait
         }));
 
-builder.Services.AddHostedService<TranscriptWorker>();        
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<
+    ITranscriptNotificationService,
+    TranscriptNotificationService>();
 
 var app = builder.Build();
 app.UseCors("AllowAngular");
@@ -262,6 +269,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<V1DeprecationMiddleware>();
 app.MapControllers();
+app.MapHub<TmsHub>("/hubs/tms");
 
 if (app.Environment.IsDevelopment())
 {

@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using TmsApi.Application.Hubs;
 using TmsApi.Application.Transcripts;
 using TmsApi.Infrastructure.Transcripts;
 
@@ -11,6 +12,7 @@ public class TranscriptWorker(
     Channel<TranscriptRequest> channel,
     IServiceScopeFactory scopeFactory,
     ITranscriptStatusStore statusStore,
+    ITranscriptNotificationService notificationService,
     ILogger<TranscriptWorker> logger)
     : BackgroundService
 {
@@ -20,9 +22,7 @@ public class TranscriptWorker(
 
         await foreach (var request in channel.Reader.ReadAllAsync(ct))
         {
-            var reportId = request.ReportId
-                ?? throw new InvalidOperationException(
-                    "ReportId must be set before queueing.");
+            var reportId = request.ReportId!;
 
             try
             {
@@ -35,7 +35,6 @@ public class TranscriptWorker(
 
                 using var scope = scopeFactory.CreateScope();
 
-                // Simulate transcript generation.
                 await Task.Delay(TimeSpan.FromSeconds(5), ct);
 
                 var downloadUrl =
@@ -46,15 +45,20 @@ public class TranscriptWorker(
                     downloadUrl,
                     ct);
 
+                await notificationService.NotifyTranscriptReadyAsync(
+                    request.StudentId,
+                    reportId,
+                    downloadUrl,
+                    ct);
+
                 logger.LogInformation(
-                    "Transcript ready: {ReportId}",
+                    "Transcript ready, notification sent: {ReportId}",
                     reportId);
             }
-            catch (OperationCanceledException)
-                when (ct.IsCancellationRequested)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 logger.LogWarning(
-                    "Worker shutdown: transcript {ReportId} did not complete",
+                    "Worker shutdown transcript {ReportId} did not complete",
                     reportId);
 
                 throw;
@@ -63,7 +67,7 @@ public class TranscriptWorker(
             {
                 logger.LogError(
                     ex,
-                    "Failed to generate transcript {ReportId}",
+                    "Transcript generation failed: {ReportId}",
                     reportId);
 
                 await statusStore.MarkFailedAsync(
