@@ -7,9 +7,5 @@ public record CourseDetailDto
     public required int MaxCapacity { get; init; }
     public required int EnrollmentCount { get; init; }
     public required IReadOnlyList<LinkDto> Links { get; init; }
-
-
-
-
     
 }

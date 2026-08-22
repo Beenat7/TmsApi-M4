@@ -26,6 +26,13 @@ public class GlobalExceptionHandler(
                         g => g.Select(e => e.ErrorMessage).ToArray())
             ),
 
+            ArgumentException ae => (
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                ae.Message,
+                null
+            ),
+
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "Server error",
@@ -40,7 +47,6 @@ public class GlobalExceptionHandler(
                 "Unhandled exception (trace={TraceId})",
                 httpContext.TraceIdentifier);
         }
-
         var problem = new ProblemDetails
         {
             Status = status,
