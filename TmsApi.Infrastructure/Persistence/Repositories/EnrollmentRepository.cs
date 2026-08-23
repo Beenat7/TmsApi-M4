@@ -36,5 +36,21 @@ public class EnrollmentRepository(TmsDbContext context)
             .Where(e => e.StudentId == studentId)
             .ToListAsync(ct);
     }
+
+    public async Task<Enrollment?> GetByIdAsync(
+    int enrollmentId,
+    CancellationToken ct = default)
+    {
+        return await context.Enrollments
+            .FirstOrDefaultAsync(
+                e => e.Id == enrollmentId,
+                ct);
+    }
+
+    public async Task SaveChangesAsync(
+        CancellationToken ct = default)
+    {
+        await context.SaveChangesAsync(ct);
+    }
 }
 

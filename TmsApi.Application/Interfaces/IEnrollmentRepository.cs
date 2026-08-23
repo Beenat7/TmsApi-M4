@@ -16,4 +16,12 @@ public interface IEnrollmentRepository
     Task<List<Enrollment>> GetByStudentIdAsync(
         int studentId,
         CancellationToken ct = default);
+
+    Task<Enrollment?> GetByIdAsync(
+        int enrollmentId,
+        CancellationToken ct = default);
+
+    Task SaveChangesAsync(
+        CancellationToken ct = default);    
+
 }

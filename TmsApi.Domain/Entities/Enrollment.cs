@@ -1,10 +1,12 @@
-using System;
+using TmsApi.Domain.Enums;
+
 namespace TmsApi.Domain.Entities;
 public class Enrollment
 {
 public int Id { get; set; }
 public int StudentId { get; set; }
 public int CourseId { get; set; }
+public EnrollmentStatus Status { get; set; } = EnrollmentStatus.Pending;
 public decimal? Grade { get; set; } // Nullable, as studentmay be currently enrolled
 public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;// Navigation properties back to entities
 public Student Student { get; set; } = null!;

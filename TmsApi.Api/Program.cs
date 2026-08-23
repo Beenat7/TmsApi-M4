@@ -385,7 +385,7 @@ builder.Services
 
 var app = builder.Build();
 
-app.UseCors("AllowAngular");
+//app.UseCors("AllowAngular");
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseMiddleware<RequestLoggingMiddleware>();
