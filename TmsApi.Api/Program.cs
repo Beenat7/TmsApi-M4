@@ -397,9 +397,12 @@ builder.Services.AddAntiforgery(options =>
     options.HeaderName = "X-XSRF-TOKEN";
 });
 
+builder.Services.AddProblemDetails(); // Add RFC 7807 ProblemDetails support to the DI container
 
 
 var app = builder.Build();
+
+app.UseStatusCodePages(); // Converts 4xx/5xx responses into standard ProblemDetails payloads
 
 //app.UseCors("AllowAngular");
 app.UseExceptionHandler();
@@ -440,7 +443,8 @@ app.Use(async (context, next) =>
 
 app.UseMiddleware<V1DeprecationMiddleware>();
 app.MapControllers();
-app.MapHub<TmsHub>("/hubs/tms");
+
+app.MapHub<TmsHub>("/hubs/tms").RequireCors("TmsClient");
 
 if (app.Environment.IsDevelopment())
 {
