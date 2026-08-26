@@ -1,8 +1,6 @@
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 
 using Scalar.AspNetCore;
-using TmsApi.Api.Authentication;
 using TmsApi.Api.Filters;
 using TmsApi.Api.Middleware;
 
@@ -51,6 +49,8 @@ using OpenTelemetry.Trace;
 
 using Microsoft.AspNetCore.Antiforgery;
 
+using Microsoft.AspNetCore.Identity;
+
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -80,21 +80,32 @@ builder.Services.AddApiVersioning(options =>
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
-builder.Services.AddAuthentication("DemoScheme")
-    .AddScheme<AuthenticationSchemeOptions, DemoAuthenticationHandler>(
-        "DemoScheme",
-        options => { });
-
 builder.Services.AddAuthorization();
-
-
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 // Register TmsDbContext scoped for incoming HTTP requests
 builder.Services.AddDbContext<TmsDbContext>(options =>
 options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
-.LogTo(Console.WriteLine, LogLevel.Information) // Log SQLto output window
-.EnableSensitiveDataLogging()); // Show parameters in querylogs (dev only)
+    .LogTo(Console.WriteLine, LogLevel.Information) // Log SQLto output window
+    .EnableSensitiveDataLogging()); // Show parameters in querylogs (dev only)
+
+builder.Services
+    .AddIdentityCore<TmsUser>(options =>
+    {
+        // Enterprise password policy
+        options.Password.RequiredLength = 12;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireDigit = true;
+        options.Password.RequireNonAlphanumeric = true;
+
+        // Brute-force lockout protection
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan =
+            TimeSpan.FromMinutes(15);
+        options.Lockout.AllowedForNewUsers = true;
+    })
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<TmsDbContext>();
 
 builder.Services.AddOptions<PaymentOptions>()
     .BindConfiguration("Payments")
@@ -105,8 +116,6 @@ builder.Services.AddScoped<ICourseService, CourseService>();
 
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
-
-
 
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(EnrollStudentHandler).Assembly));

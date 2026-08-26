@@ -1,6 +1,7 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using TmsApi.Application.Authentication;
+using TmsApi.Domain.Entities;
 
 namespace TmsApi.Api.Controllers.V1;
 
@@ -9,80 +10,141 @@ namespace TmsApi.Api.Controllers.V1;
 [Route("api/v{version:apiVersion}/auth")]
 public class AuthController : ControllerBase
 {
-    [HttpPost("login")]
-    public IActionResult Login(
-        [FromBody] LoginRequest request,
-        [FromServices] IWebHostEnvironment env)
-    {
-        // Demo credentials for Module 10 transport testing only
-        if (request.Username == "admin" &&
-            request.Password == "Password123!")
-        {
-            var dummyJwt = "header.payload.signature-demo-token";
+    private readonly UserManager<TmsUser> _userManager;
+    private readonly RoleManager<IdentityRole> _roleManager;
 
-            Response.Cookies.Append(
-                "tms_auth",
-                dummyJwt,
-                new CookieOptions
+    public AuthController(
+        UserManager<TmsUser> userManager,
+        RoleManager<IdentityRole> roleManager)
+    {
+        _userManager = userManager;
+        _roleManager = roleManager;
+    }
+
+    public record RegisterRequest(
+        string Email,
+        string Password,
+        string FirstName,
+        string LastName,
+        string Role);
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register(
+        [FromBody] RegisterRequest request)
+    {
+        var existingUser =
+            await _userManager.FindByEmailAsync(request.Email);
+
+        if (existingUser != null)
+        {
+            // Prevent account enumeration by returning
+            // a generic response.
+            return Ok(
+                new
                 {
-                    HttpOnly = true,
-                    Secure = !env.IsDevelopment(),
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTimeOffset.UtcNow.AddHours(2)
+                    message = "Registration request received."
                 });
-
-            return Ok(
-                new UserProfileDto(
-                    "System Admin",
-                    "Admin"));
         }
 
-        return Unauthorized(
-            new
-            {
-                detail = "Invalid username or password."
-            });
-    }
-
-    [HttpGet("me")]
-    public IActionResult GetCurrentUser()
-    {
-        if (Request.Cookies.TryGetValue("tms_auth", out _))
+        var user = new TmsUser
         {
-            return Ok(
-                new UserProfileDto(
-                    "System Admin",
-                    "Admin"));
+            UserName = request.Email,
+            Email = request.Email,
+            FirstName = request.FirstName,
+            LastName = request.LastName
+        };
+
+        var result = await _userManager.CreateAsync(
+            user,
+            request.Password);
+
+        if (!result.Succeeded)
+        {
+            var errors = result.Errors
+                .Select(e => e.Description);
+
+            return BadRequest(
+                new
+                {
+                    errors
+                });
         }
 
-        return Unauthorized(
+        // Ensure requested role exists.
+        if (!await _roleManager.RoleExistsAsync(request.Role))
+        {
+            await _roleManager.CreateAsync(
+                new IdentityRole(request.Role));
+        }
+
+        await _userManager.AddToRoleAsync(
+            user,
+            request.Role);
+
+        return Ok(
             new
             {
-                detail = "Session expired or missing authentication cookie."
+                message = "Registration successful."
             });
     }
-    
 
-    [HttpGet("xsrf")]
-    public IActionResult GetXsrfToken()
+    public record LoginRequest(
+        string Email,
+        string Password);
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login(
+        [FromBody] LoginRequest request)
     {
-        var token = Convert.ToBase64String(
-            System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        var user =
+            await _userManager.FindByEmailAsync(request.Email);
 
-        Response.Cookies.Append(
-            "XSRF-TOKEN",
-            token,
-            new CookieOptions
+        if (user == null)
+        {
+            return Unauthorized(
+                new
+                {
+                    detail = "Invalid credentials."
+                });
+        }
+
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            return StatusCode(
+                StatusCodes.Status423Locked,
+                new
+                {
+                    detail =
+                        "Account locked due to multiple failed login attempts. Try again in 15 minutes."
+                });
+        }
+
+        var validPassword =
+            await _userManager.CheckPasswordAsync(
+                user,
+                request.Password);
+
+        if (!validPassword)
+        {
+            await _userManager.AccessFailedAsync(user);
+
+            return Unauthorized(
+                new
+                {
+                    detail = "Invalid credentials."
+                });
+        }
+
+        // Reset failed attempt counter on successful login.
+        await _userManager.ResetAccessFailedCountAsync(user);
+
+        return Ok(
+            new
             {
-                HttpOnly = false,
-                Secure = false,
-                SameSite = SameSiteMode.Strict
+                userId = user.Id,
+                email = user.Email,
+                firstName = user.FirstName,
+                lastName = user.LastName
             });
-
-        return NoContent();
     }
-
-
-
-
 }
