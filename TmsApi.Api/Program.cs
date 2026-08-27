@@ -54,9 +54,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
+using Microsoft.AspNetCore.Authorization;
+using TmsApi.Api.Authorization;
+
 
 var builder = WebApplication.CreateBuilder(args);
-
 
 builder.Host.UseDefaultServiceProvider(options =>
 {
@@ -84,7 +86,16 @@ builder.Services.AddApiVersioning(options =>
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
-builder.Services.AddAuthorization();
+
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(
+        "CanEditCourse",
+    policy => policy.Requirements.Add(
+            new CourseInstructorRequirement()));
+builder.Services.AddSingleton<
+    IAuthorizationHandler,
+    CourseInstructorHandler>();
+
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 

@@ -3,13 +3,24 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Infrastructure.Persistence;
 
+using Microsoft.AspNetCore.Authorization;
+using TmsApi.Api.Authorization;
+using TmsApi.Domain.Entities;
+
 namespace TmsApi.Api.Controllers.V1;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/courses")]
 [ApiVersion("1.0")]
-public class CoursesController(TmsDbContext context) : ControllerBase
+public class CoursesController(
+    TmsDbContext context,
+    IAuthorizationService authorizationService)
+    : ControllerBase
 {
+    public record UpdateCourseRequest(
+    string Title,
+    int MaxCapacity);
+
     [HttpGet]
     public async Task<IActionResult> GetCourses(
         [FromQuery] int page = 1,
@@ -20,9 +31,7 @@ public class CoursesController(TmsDbContext context) : ControllerBase
         pageSize = Math.Clamp(pageSize, 1, 50);
 
         var baseQuery = context.Courses.AsNoTracking();
-
         var totalCount = await baseQuery.CountAsync(ct);
-
         var items = await baseQuery
             .OrderBy(c => c.Title)
             .Skip((page - 1) * pageSize)
@@ -50,6 +59,47 @@ public class CoursesController(TmsDbContext context) : ControllerBase
             hasPrevious = page > 1
         });
     }
+
+   
+         [Authorize(Roles = "Instructor,Admin")]
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateCourse(
+            int id,
+            [FromBody] UpdateCourseRequest request,
+            CancellationToken ct = default)
+        {
+            var course = await context.Courses
+                .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+            if (course is null)
+            {
+                return NotFound(new
+                {
+                    detail = $"Course {id} was not found."
+                });
+            }
+
+            var authorizationResult =
+                await authorizationService.AuthorizeAsync(
+                    User,
+                    course,
+                    "CanEditCourse");
+
+            if (!authorizationResult.Succeeded)
+            {
+                return Forbid();
+            }
+
+            course.Title = request.Title;
+            course.MaxCapacity = request.MaxCapacity;
+
+            await context.SaveChangesAsync(ct);
+
+            return NoContent();
+        }
+
+
+
     
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCourse(
