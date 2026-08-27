@@ -2,6 +2,7 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Domain.Entities;
+using TmsApi.Infrastructure.Services;
 
 namespace TmsApi.Api.Controllers.V1;
 
@@ -12,13 +13,15 @@ public class AuthController : ControllerBase
 {
     private readonly UserManager<TmsUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
-
+    private readonly TokenService _tokenService;
     public AuthController(
         UserManager<TmsUser> userManager,
-        RoleManager<IdentityRole> roleManager)
+        RoleManager<IdentityRole> roleManager,
+        TokenService tokenService)
     {
         _userManager = userManager;
         _roleManager = roleManager;
+        _tokenService = tokenService;
     }
 
     public record RegisterRequest(
@@ -138,13 +141,13 @@ public class AuthController : ControllerBase
         // Reset failed attempt counter on successful login.
         await _userManager.ResetAccessFailedCountAsync(user);
 
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var accessToken = _tokenService.GenerateJwt(user,roles);
+
         return Ok(
-            new
-            {
-                userId = user.Id,
-                email = user.Email,
-                firstName = user.FirstName,
-                lastName = user.LastName
+            new{
+                accessToken
             });
-    }
+            }
 }
