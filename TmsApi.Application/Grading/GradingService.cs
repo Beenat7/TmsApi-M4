@@ -1,0 +1,34 @@
+namespace TmsApi.Application.Grading;
+
+public class GradingService
+{
+    public const decimal DistinctionThreshold = 70m;
+    public const decimal PassThreshold = 50m;
+
+    // Maps a score against its maximum score to a grade level.
+    public GradeLevel CalculateLetterGrade(decimal score, decimal maxScore)
+    {
+        if (maxScore <= 0m || score < 0m || score > maxScore)
+            return GradeLevel.Invalid;
+
+        var percentage = score / maxScore * 100m;
+
+        return percentage >= DistinctionThreshold
+            ? GradeLevel.Distinction
+            : percentage >= PassThreshold
+                ? GradeLevel.Pass
+                : GradeLevel.Fail;
+    }
+
+    // Maps an Enrollment.Grade percentage to a grade level.
+    // Enrollment.Grade is nullable; null means the grade is invalid.
+    public GradeLevel CalculateFromEnrollmentGrade(decimal? enrollmentGradePercent)
+    {
+        if (enrollmentGradePercent is null)
+            return GradeLevel.Invalid;
+
+        return CalculateLetterGrade(
+            enrollmentGradePercent.Value,
+            maxScore: 100m);
+    }
+}
