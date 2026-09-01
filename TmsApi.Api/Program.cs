@@ -523,7 +523,12 @@ app.MapGet("/api/error", () =>
 using (var scope = app.Services.CreateScope())
 {
 var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
-context.Database.Migrate(); // Applies any pending migrations; keeps migration history intact
+//context.Database.Migrate(); // Applies any pending migrations; keeps migration history intact
+if (context.Database.IsRelational())
+{
+    context.Database.Migrate();
+}
+
 if (!context.Students.Any())
 {
 var students = new List<Student>
@@ -642,4 +647,8 @@ app.MapHealthChecks(
     });
 
 app.Run();
+
+public partial class Program { }
+
+
 
