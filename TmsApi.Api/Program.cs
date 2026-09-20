@@ -641,7 +641,7 @@ app.MapHealthChecks(
 
         context.Response.Headers.Append(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';");
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';");
 
         await next();
     });

@@ -406,23 +406,31 @@ Screenshots can be included here to demonstrate the API and development environm
 
 ### API Documentation
 
-*Add screenshot of the API documentation interface here.*
-
-### Course Endpoints
-
-*Add screenshot showing course API endpoints and responses here.*
+![API Documentation](docs/screenshots/api-documentation.png)
 
 ### Authentication
 
-*Add screenshot demonstrating the authentication flow or protected endpoint here.*
+![Authentication](docs/screenshots/authentication.png)
+
+### Course
+
+![Course](docs/screenshots/course-endpoints.png)
+
+### Get Course
+
+![Get Course](docs/screenshots/get-course.png)
+
+### Models
+
+![Models](docs/screenshots/models.png)
 
 ### Database
 
-*Add screenshot of the PostgreSQL database/tables here.*
+![Database](docs/screenshots/database.png)
 
 ### Testing
 
-*Add screenshot showing the backend test results here.*
+![Testing](docs/screenshots/testing.png)
 
 ---
 
